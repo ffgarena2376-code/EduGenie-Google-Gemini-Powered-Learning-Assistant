@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduGenie</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>EduGenie</h1>
+      <p>Google Gemini Powered Learning Assistant</p>
+    </header>
+
+    <section class="card">
+      <label for="task">Choose a task</label>
+      <select id="task">
+        <option value="qa">Ask a Question</option>
+        <option value="explain">Explain a Topic</option>
+        <option value="quiz">Generate Quiz</option>
+        <option value="summarize">Summarize Text</option>
+        <option value="learn">Learning Path</option>
+      </select>
+
+      <label for="inputText">Your input</label>
+      <textarea id="inputText" rows="10"
+        placeholder="Type your question, topic, or educational text here..."></textarea>
+
+      <button id="submitBtn" onclick="runTask()">Generate</button>
+
+      <div id="status"></div>
+      <section id="result" class="result" hidden></section>
+    </section>
+  </main>
+
+<script>
+async function runTask() {
+  const task = document.getElementById("task").value;
+  const text = document.getElementById("inputText").value.trim();
+  const status = document.getElementById("status");
+  const result = document.getElementById("result");
+  const button = document.getElementById("submitBtn");
+
+  if (!text) {
+    status.textContent = "Please enter some text first.";
+    return;
+  }
+
+  const endpoints = {
+    qa: "/qa",
+    explain: "/explain",
+    quiz: "/quiz",
+    summarize: "/summarize",
+    learn: "/learn/recommendations"
+  };
+
+  const body = task === "qa" ? { question: text } : { text };
+
+  button.disabled = true;
+  status.textContent = "Thinking...";
+  result.hidden = true;
+  result.innerHTML = "";
+
+  try {
+    const response = await fetch(endpoints[task], {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Request failed");
+    }
+
+    if (task === "quiz") {
+      renderQuiz(data.result);
+    } else {
+      result.textContent = data.result;
+    }
+
+    result.hidden = false;
+    status.textContent = "Done.";
+  } catch (error) {
+    status.textContent = "Error: " + error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function renderQuiz(questions) {
+  const result = document.getElementById("result");
+  result.innerHTML = "<h2>Quiz</h2>";
+
+  questions.forEach((q, index) => {
+    const box = document.createElement("div");
+    box.className = "quiz-question";
+
+    const title = document.createElement("h3");
+    title.textContent = `${index + 1}. ${q.question}`;
+    box.appendChild(title);
+
+    q.options.forEach(option => {
+      const label = document.createElement("label");
+      label.className = "option";
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = `q${index}`;
+      radio.value = option;
+
+      label.appendChild(radio);
+      label.appendChild(document.createTextNode(" " + option));
+      box.appendChild(label);
+    });
+
+    const answer = document.createElement("p");
+    answer.className = "answer";
+    answer.textContent = "Correct answer: " + q.correct_answer;
+    box.appendChild(answer);
+
+    result.appendChild(box);
+  });
+}
+</script>
+</body>
+</html>
